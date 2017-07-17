@@ -317,38 +317,46 @@
                 value))
     obj))
 
+(defun resource-class-expanded (resource)
+  "Returns the resource class as an expanded IRI"
+  (expand-prefix (raw-content (ld-class resource))))
+
+(defun relation-link-expanded (relation)
+  "Returns the relation link as an expanded IRI"
+  (expand-prefix (raw-content (ld-link relation))))
+
 (defun cache-class (resource)
-  (add-cache-key :resource (json-type resource)))
+  (add-cache-key :resource (resource-class-expanded resource)))
 
 (defun cache-object (item-spec)
-  (add-cache-key :resource (json-type (resource item-spec))
-                 :id (uuid item-spec)))
+  (add-cache-key :resource (resource-class-expanded (resource item-spec))
+                 :id (node-url item-spec)))
 
 (defun cache-relation (item-spec relation)
-  (add-cache-key :resource (json-type (resource item-spec))
-                 :id (uuid item-spec)
-                 :relation (request-path relation))
+  (add-cache-key :resource (resource-class-expanded (resource item-spec))
+                 :id (node-url item-spec)
+                 :relation (relation-link-expanded relation))
   ;; for clearing of inverse relationships
-  (add-cache-key :resource (json-type (resource item-spec))
-                 :relation (request-path relation)))
+  (add-cache-key :resource (resource-class-expanded (resource item-spec))
+                 :relation (relation-link-expanded relation)))
 
 (defun cache-clear-class (resource)
   (clear-cached-count-queries resource)
-  (add-clear-key :resource (json-type resource)))
+  (add-clear-key :resource (resource-class-expanded resource)))
 
 (defun cache-clear-object (item-spec)
   (clear-solution item-spec)
-  (add-clear-key :resource (json-type (resource item-spec))
-                 :id (uuid item-spec)))
+  (add-clear-key :resource (resource-class-expanded (resource item-spec))
+                 :id (node-url item-spec)))
 
 (defun cache-clear-relation (item-spec relation)
-  (add-clear-key :resource (json-type (resource item-spec))
-                 :id (uuid item-spec)
-                 :relation (request-path relation))
+  (add-clear-key :resource (resource-class-expanded (resource item-spec))
+                 :id (node-url item-spec)
+                 :relation (relation-link-expanded relation))
   ;; for clearing of inverse relationships
   (dolist (inverse-relation (inverse-links relation))
-    (add-clear-key :resource (json-type (getf inverse-relation :resource))
-                   :relation (request-path (getf inverse-relation :link)))))
+    (add-clear-key :resource (resource-class-expanded (getf inverse-relation :resource))
+                   :relation (relation-link-expanded (getf inverse-relation :link)))))
 
 
 
@@ -360,7 +368,8 @@
 (defgeneric cache-on-resource (resource)
   (:documentation "Caches on a specific resource, like an item-spec")
   (:method ((item-spec item-spec))
-    (add-cache-key :resource (json-type (resource item-spec)) :id (uuid item-spec))))
+    (add-cache-key :resource (resource-class-expanded (resource item-spec))
+                   :id (node-url item-spec))))
 
 (defun cache-on-resource-relation (item-spec link)
   "Caches on the specified resource and its accompanying relationship."
@@ -368,7 +377,7 @@
   ;;       should occur on the level of the link properties
   ;;       rather than the name.
   (cache-relation item-spec link)
-  (cache-on-class-list (json-type (find-resource-by-name (resource-name link)))))
+  (cache-on-class-list (resource-class-expanded (find-resource-by-name (resource-name link)))))
 
 (defun reset-cache-for-resource-relation (item-spec link)
   "Resets the cache for the specified resource and its
